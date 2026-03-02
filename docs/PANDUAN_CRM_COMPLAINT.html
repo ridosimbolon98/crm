@@ -23,7 +23,7 @@
         .page {
             width: 210mm;
             margin: 0 auto;
-            padding: 16mm;
+            padding: 14mm;
         }
         h1, h2, h3 { margin: 0 0 8px; line-height: 1.3; }
         h1 { font-size: 26px; color: var(--accent); }
@@ -40,11 +40,6 @@
             background: #f8fafc;
             margin: 8px 0 10px;
         }
-        .grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-        }
         .k { font-weight: 600; }
         table {
             width: 100%;
@@ -59,6 +54,16 @@
             vertical-align: top;
         }
         th { background: #f1f5f9; }
+        pre {
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 10px;
+            margin: 8px 0 10px;
+            background: #f8fafc;
+            white-space: pre-wrap;
+            font-family: Consolas, "Courier New", monospace;
+            font-size: 12px;
+        }
         .footer {
             margin-top: 20px;
             font-size: 12px;
@@ -67,7 +72,7 @@
             padding-top: 8px;
         }
         @media print {
-            .page { margin: 0; padding: 10mm; }
+            .page { margin: 0; padding: 8mm; }
             a { color: inherit; text-decoration: none; }
         }
     </style>
@@ -75,15 +80,15 @@
 <body>
     <main class="page">
         <h1>Panduan Penggunaan Sistem CRM Complaint</h1>
-        <p class="meta">Versi dokumen: 1.0 | Tanggal: 2 Maret 2026</p>
-        <p>Panduan ini menjelaskan cara menggunakan sistem CRM Complaint untuk proses penerimaan, investigasi, CAPA, approval, hingga penutupan ticket customer complaint.</p>
+        <p class="meta">Versi dokumen: 2.0 | Tanggal update: 2 Maret 2026</p>
+        <p>Panduan ini mencakup alur terbaru: complaint publik tanpa login, proses internal, workflow CAPA, master data, audit log, dan export laporan.</p>
 
         <h2>1. Tujuan Sistem</h2>
         <ul>
-            <li>Mencatat keluhan customer secara terstruktur dan terdokumentasi.</li>
-            <li>Memastikan tindak lanjut complaint sesuai SLA.</li>
-            <li>Menerapkan workflow CAPA: <span class="k">QA -&gt; Manager -&gt; Closed</span>.</li>
-            <li>Menyediakan jejak audit (audit log) untuk setiap aksi penting.</li>
+            <li>Menerima keluhan customer dari kanal publik dan internal.</li>
+            <li>Memastikan tindak lanjut keluhan terkontrol hingga penutupan.</li>
+            <li>Menerapkan workflow CAPA: <span class="k">QA -> Manager -> Closed</span>.</li>
+            <li>Menyediakan jejak audit untuk kebutuhan kepatuhan.</li>
         </ul>
 
         <h2>2. Role dan Akses</h2>
@@ -91,163 +96,146 @@
             <thead>
                 <tr>
                     <th>Role</th>
-                    <th>Hak Akses Utama</th>
+                    <th>Akses</th>
                 </tr>
             </thead>
             <tbody>
-                <tr>
-                    <td>Admin</td>
-                    <td>Akses penuh semua fitur.</td>
-                </tr>
-                <tr>
-                    <td>QA</td>
-                    <td>Create ticket, update status, submit CAPA, close ticket (jika CAPA approved).</td>
-                </tr>
-                <tr>
-                    <td>Manager</td>
-                    <td>Review CAPA, approve/reject CAPA, close ticket.</td>
-                </tr>
-                <tr>
-                    <td>CS</td>
-                    <td>Create ticket, tambah catatan, upload lampiran.</td>
-                </tr>
-                <tr>
-                    <td>Viewer</td>
-                    <td>View dashboard/list dan export laporan.</td>
-                </tr>
+                <tr><td>Customer (Guest)</td><td>Input complaint melalui form publik.</td></tr>
+                <tr><td>Admin</td><td>Akses penuh semua modul + kelola master data.</td></tr>
+                <tr><td>QA</td><td>Proses complaint, submit CAPA, close ticket (jika CAPA approved).</td></tr>
+                <tr><td>Manager</td><td>Approve/reject CAPA, close ticket.</td></tr>
+                <tr><td>CS</td><td>Input complaint internal, catatan, lampiran.</td></tr>
+                <tr><td>Viewer</td><td>Lihat dashboard, list complaint, panduan, export.</td></tr>
             </tbody>
         </table>
 
-        <h2>3. Alur Kerja Harian</h2>
+        <h2>3. Flow Proses Menyeluruh</h2>
         <ol>
-            <li>Login ke sistem menggunakan akun yang diberikan administrator.</li>
-            <li>Buka menu <span class="k">Complaint</span> untuk melihat daftar ticket.</li>
-            <li>Klik <span class="k">Input Ticket Baru</span> untuk membuat complaint baru.</li>
-            <li>Isi data lengkap customer dan detail keluhan, lalu simpan.</li>
-            <li>Buka halaman detail ticket untuk investigasi, update status, dan upload bukti.</li>
-            <li>QA mengisi dan submit CAPA.</li>
+            <li>Customer mengisi form complaint publik.</li>
+            <li>Sistem validasi data, lalu membuat ticket complaint.</li>
+            <li>Tim internal menerima notifikasi complaint baru.</li>
+            <li>Tim melakukan investigasi, catatan, dan upload bukti.</li>
+            <li>QA submit CAPA ke Manager.</li>
             <li>Manager approve/reject CAPA.</li>
-            <li>Jika CAPA approved, lakukan close ticket dengan ringkasan final.</li>
+            <li>Jika approve, ticket ditutup (close) dengan ringkasan final.</li>
+            <li>Semua aksi dicatat dalam audit log.</li>
         </ol>
 
-        <h2>4. Penggunaan Halaman Complaint</h2>
-        <h3>4.1 Halaman List Complaint</h3>
-        <ul>
-            <li>Fitur filter: keyword, status, severity, brand, rentang tanggal.</li>
-            <li>Fitur export: <span class="k">Export Excel</span> dan <span class="k">Export PDF</span>.</li>
-            <li>Klik <span class="k">Detail</span> untuk membuka halaman detail ticket.</li>
-        </ul>
+        <h3>3.1 Flowchart Utama</h3>
+        <pre>[Customer Isi Form Publik]
+        |
+        v
+[Validasi Form]
+   | valid
+        v
+[Buat Ticket Complaint + Notifikasi Internal]
+        |
+        v
+[Investigasi Internal + Catatan + Lampiran]
+        |
+        v
+[QA Submit CAPA] --> [Manager Review]
+                         | approve
+                         v
+                    [Close Ticket]
+                         |
+                         v
+                 [Audit Log + Export]
+                         ^
+                         | reject
+                    [QA Revisi CAPA]</pre>
 
-        <h3>4.2 Halaman Input Ticket Baru</h3>
+        <h3>3.2 Flowchart CAPA Detail</h3>
+        <pre>[QA Isi Root Cause/Corrective/Preventive]
+        |
+        v
+[Submit CAPA]
+        |
+        v
+[Manager Approve?] -- No --> [Reject + Alasan] --> [QA Revisi]
+        |
+       Yes
+        v
+[CAPA Approved] --> [Isi Resolution Summary] --> [Close Ticket]</pre>
+
         <div class="box">
-            Field minimum yang wajib: Nama Customer, Channel, Tanggal Complaint, Severity, Status, dan Deskripsi Keluhan.
-        </div>
-        <ul>
-            <li>Isi Brand, Kategori, Kode Produksi, PIC, dan Target Resolution bila tersedia.</li>
-            <li>Upload lampiran bukti (jpg/png/webp/mp4/pdf), maksimal 5 file, 10MB per file.</li>
-            <li>Simpan ticket, sistem otomatis membuat nomor ticket unik.</li>
-        </ul>
-
-        <h3>4.3 Halaman Detail Ticket</h3>
-        <ul>
-            <li>Menampilkan data utama ticket, status, CAPA status, timeline update, lampiran, dan audit log.</li>
-            <li><span class="k">Update Status</span>: gunakan untuk perubahan status operasional (Open/Investigating/Action Plan/Resolved).</li>
-            <li><span class="k">Catatan</span>: menambah progress investigasi.</li>
-            <li><span class="k">Lampiran</span>: upload/download bukti pendukung.</li>
-        </ul>
-
-        <h2>5. Workflow CAPA (QA -&gt; Manager -&gt; Closed)</h2>
-        <div class="grid">
-            <div class="box">
-                <p><span class="k">Langkah QA:</span></p>
-                <ol>
-                    <li>Isi Root Cause.</li>
-                    <li>Isi Corrective Action.</li>
-                    <li>Isi Preventive Action.</li>
-                    <li>Tentukan CAPA Due Date.</li>
-                    <li>Submit CAPA ke Manager.</li>
-                </ol>
-            </div>
-            <div class="box">
-                <p><span class="k">Langkah Manager:</span></p>
-                <ol>
-                    <li>Review CAPA di halaman detail ticket.</li>
-                    <li>Approve jika valid, atau Reject dengan alasan.</li>
-                    <li>Jika reject, QA wajib revisi dan submit ulang.</li>
-                </ol>
-            </div>
-        </div>
-        <div class="box">
-            <p><span class="k">Penutupan Ticket:</span> ticket hanya bisa di-close jika CAPA sudah <span class="k">Approved</span>. Saat close, isi ringkasan final penyelesaian.</p>
+            Dokumen flowchart versi source: <span class="k">docs/FLOW_PROSES_DAN_FLOWCHART_CRM_COMPLAINT.md</span>
         </div>
 
-        <h2>6. Audit Log</h2>
-        <p>Setiap aksi penting user direkam otomatis, termasuk:</p>
+        <h2>4. Penggunaan Modul</h2>
+        <h3>4.1 Form Publik (Guest)</h3>
         <ul>
-            <li>Create ticket</li>
-            <li>Update status</li>
-            <li>Submit/approve/reject/close CAPA</li>
-            <li>Tambah catatan</li>
-            <li>Upload/download lampiran</li>
-            <li>Export Excel/PDF</li>
-        </ul>
-        <p>Audit log digunakan untuk kebutuhan traceability, kontrol internal, dan pemeriksaan kepatuhan.</p>
-
-        <h2>7. Dashboard dan Monitoring KPI</h2>
-        <ul>
-            <li>Total Complaint</li>
-            <li>Open Ticket</li>
-            <li>Closed 30 Hari</li>
-            <li>Average Resolution Time</li>
-            <li>SLA Compliance</li>
-            <li>Distribusi status dan top brand complaint</li>
+            <li>Akses: `/` atau `/complaint-form`.</li>
+            <li>Isi data diri, domisili, detail keluhan, upload lampiran, lalu setujui consent.</li>
+            <li>Setelah submit, sistem menampilkan nomor tiket.</li>
         </ul>
 
-        <h2>8. Panduan Export Laporan</h2>
+        <h3>4.2 Complaint Internal</h3>
         <ul>
-            <li>Gunakan filter terlebih dahulu pada halaman list complaint.</li>
-            <li>Klik <span class="k">Export Excel</span> untuk file CSV kompatibel Excel.</li>
-            <li>Klik <span class="k">Export PDF</span> untuk tampilan print-ready.</li>
-            <li>Simpan hasil export sesuai periode pelaporan yang dibutuhkan.</li>
+            <li>Menu List Complaint: filter, monitoring, export.</li>
+            <li>Input Ticket Baru: untuk admin/QA/manager/CS.</li>
+            <li>Detail Ticket: update status, CAPA, catatan, lampiran, audit log.</li>
         </ul>
 
-        <h2>9. Troubleshooting Singkat</h2>
+        <h3>4.3 Master Data (Admin Only)</h3>
+        <ul>
+            <li>Master Brand, Category, Severity, Customer dikelola via menu Master Data.</li>
+            <li>Halaman menggunakan tab per master.</li>
+            <li>Tambah/Edit data menggunakan popup modal.</li>
+            <li>Master Customer memiliki pagination.</li>
+        </ul>
+
+        <h2>5. Aturan Bisnis Penting</h2>
+        <ul>
+            <li>Ticket tidak boleh langsung ditutup tanpa CAPA approved.</li>
+            <li>Close ticket wajib menyertakan ringkasan final penyelesaian.</li>
+            <li>Master data hanya dapat diubah oleh role Admin.</li>
+            <li>Setiap aksi penting tercatat di audit log.</li>
+        </ul>
+
+        <h2>6. Audit, Notifikasi, dan Export</h2>
+        <ul>
+            <li>Audit log merekam: create/update/submit/approve/reject/close/upload/download/export.</li>
+            <li>Notifikasi dikirim saat complaint publik masuk dan event penting complaint.</li>
+            <li>Export tersedia dalam format Excel (CSV) dan PDF.</li>
+        </ul>
+
+        <h2>7. Troubleshooting Singkat</h2>
         <table>
             <thead>
                 <tr>
-                    <th>Masalah</th>
+                    <th>Kondisi</th>
                     <th>Tindakan</th>
                 </tr>
             </thead>
             <tbody>
                 <tr>
                     <td>Tidak bisa akses menu tertentu</td>
-                    <td>Cek role akun. Hubungi Admin untuk perubahan hak akses.</td>
+                    <td>Periksa role user dan status akun aktif.</td>
                 </tr>
                 <tr>
-                    <td>Ticket tidak bisa di-close</td>
-                    <td>Pastikan CAPA sudah Approved dan ringkasan final diisi.</td>
+                    <td>Tidak bisa close ticket</td>
+                    <td>Pastikan CAPA status sudah Approved.</td>
                 </tr>
                 <tr>
                     <td>Upload lampiran gagal</td>
-                    <td>Periksa format file dan ukuran maksimal 10MB per file.</td>
+                    <td>Pastikan format dan ukuran file sesuai ketentuan.</td>
                 </tr>
                 <tr>
-                    <td>Export kosong</td>
-                    <td>Cek filter tanggal/status. Ulangi export tanpa filter untuk verifikasi.</td>
+                    <td>Data export kosong</td>
+                    <td>Periksa kembali filter periode/status.</td>
                 </tr>
             </tbody>
         </table>
 
-        <h2>10. Kontak Internal</h2>
-        <p>Untuk bantuan operasional atau kendala teknis, hubungi:</p>
+        <h2>8. Kontak Internal</h2>
         <ul>
             <li>Admin Sistem CRM</li>
             <li>Tim QA Supervisor</li>
-            <li>Tim IT Support Internal</li>
+            <li>Tim IT Support</li>
         </ul>
 
-        <p class="footer">Dokumen ini merupakan panduan operasional sistem CRM Complaint internal perusahaan.</p>
+        <p class="footer">Dokumen ini adalah panduan operasional internal sistem CRM Complaint.</p>
     </main>
 </body>
 </html>

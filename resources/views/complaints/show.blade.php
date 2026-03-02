@@ -46,6 +46,23 @@
           </p>
         </div>
 
+        @if (!empty($extraPayload))
+          <div class="mt-4 rounded-xl border border-slate-200 p-3 text-sm text-slate-700">
+            <p class="mb-2 font-semibold text-slate-900">Data Tambahan Form Publik</p>
+            <div class="grid gap-2 sm:grid-cols-2">
+              <p><span class="font-semibold">Jenis Kelamin:</span> {{ $extraPayload['gender'] ?? '-' }}</p>
+              <p><span class="font-semibold">Tanggal Lahir:</span> {{ $extraPayload['birth_date'] ?? '-' }}</p>
+              <p><span class="font-semibold">Provinsi:</span> {{ $extraPayload['province'] ?? '-' }}</p>
+              <p><span class="font-semibold">Kota:</span> {{ $extraPayload['city'] ?? '-' }}</p>
+              <p><span class="font-semibold">Kecamatan:</span> {{ $extraPayload['district'] ?? '-' }}</p>
+              <p><span class="font-semibold">Kelurahan:</span> {{ $extraPayload['subdistrict'] ?? '-' }}</p>
+              <p><span class="font-semibold">Tanggal Beli:</span> {{ $extraPayload['purchase_date'] ?? '-' }}</p>
+              <p><span class="font-semibold">Lokasi Beli:</span> {{ $extraPayload['purchase_location'] ?? '-' }}</p>
+              <p class="sm:col-span-2"><span class="font-semibold">Alamat:</span> {{ $extraPayload['address'] ?? '-' }}</p>
+            </div>
+          </div>
+        @endif
+
         <div class="mt-4 rounded-xl bg-slate-50 p-3 text-sm text-slate-700">
           {{ $complaint->description }}
         </div>

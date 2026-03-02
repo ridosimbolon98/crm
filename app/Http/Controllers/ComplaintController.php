@@ -34,7 +34,7 @@ class ComplaintController extends Controller
 
         $complaints = $this->applyFilters(Complaint::query()->with(['brand', 'category']), $filters)
             ->latest('created_at')
-            ->paginate(12)
+            ->paginate(10)
             ->withQueryString();
 
         $now = now();
@@ -92,6 +92,7 @@ class ComplaintController extends Controller
             'canSubmitCapa' => $request->user()?->hasRole(User::ROLE_ADMIN, User::ROLE_QA) ?? false,
             'canApproveCapa' => $request->user()?->hasRole(User::ROLE_ADMIN, User::ROLE_MANAGER) ?? false,
             'canCloseCapa' => $request->user()?->hasRole(User::ROLE_ADMIN, User::ROLE_MANAGER, User::ROLE_QA) ?? false,
+            'extraPayload' => $complaint->extra_payload ?? [],
         ]);
     }
 

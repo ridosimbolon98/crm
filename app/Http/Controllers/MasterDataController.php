@@ -15,11 +15,14 @@ class MasterDataController extends Controller
 {
     public function index(): View
     {
+        $activeTab = request()->string('tab')->toString() ?: 'brand';
+
         return view('master-data.index', [
             'brands' => Brand::query()->orderBy('name')->get(),
             'categories' => ComplaintCategory::query()->orderBy('name')->get(),
             'severities' => ComplaintSeverity::query()->orderBy('sort_order')->orderBy('name')->get(),
-            'customers' => Customer::query()->orderByDesc('created_at')->paginate(15),
+            'customers' => Customer::query()->orderByDesc('created_at')->paginate(15)->withQueryString(),
+            'activeTab' => $activeTab,
         ]);
     }
 

@@ -5,7 +5,12 @@ use App\Http\Controllers\ComplaintController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GuideController;
 use App\Http\Controllers\MasterDataController;
+use App\Http\Controllers\PublicComplaintController;
 use Illuminate\Support\Facades\Route;
+
+Route::get('/', [PublicComplaintController::class, 'landing'])->name('landing');
+Route::get('/complaint-form', [PublicComplaintController::class, 'create'])->name('public.complaints.create');
+Route::post('/complaint-form', [PublicComplaintController::class, 'store'])->name('public.complaints.store');
 
 Route::middleware('guest')->group(function (): void {
     Route::get('/login', [AuthController::class, 'create'])->name('login');
@@ -15,7 +20,6 @@ Route::middleware('guest')->group(function (): void {
 Route::middleware('auth')->group(function (): void {
     Route::post('/logout', [AuthController::class, 'destroy'])->name('logout');
 
-    Route::get('/', fn () => redirect()->route('dashboard.index'));
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard.index');
     Route::get('/panduan', [GuideController::class, 'index'])->name('guide.index');
     Route::get('/panduan/pdf', [GuideController::class, 'pdf'])->name('guide.pdf');

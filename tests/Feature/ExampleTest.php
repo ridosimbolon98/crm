@@ -11,11 +11,12 @@ class ExampleTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_guest_is_redirected_to_login(): void
+    public function test_guest_can_open_public_complaint_form(): void
     {
         $response = $this->get('/');
 
-        $response->assertRedirect('/login');
+        $response->assertStatus(200);
+        $response->assertSee('Sampaikan Keluhan Anda');
     }
 
     public function test_authenticated_user_can_access_dashboard_and_complaints(): void

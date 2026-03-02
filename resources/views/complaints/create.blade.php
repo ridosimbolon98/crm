@@ -15,16 +15,33 @@
 
             <form method="POST" action="{{ route('complaints.store') }}" enctype="multipart/form-data" class="mt-4 grid gap-3">
                 @csrf
-                <select name="customer_id" class="crm-input">
-                    <option value="">Pilih Master Customer (Opsional)</option>
+                @php
+                    $selectedCustomer = $customers->firstWhere('id', (int) old('customer_id'));
+                    $selectedCustomerLabel = $selectedCustomer ? ($selectedCustomer->name.($selectedCustomer->phone ? ' - '.$selectedCustomer->phone : '')) : '';
+                @endphp
+                <input type="hidden" name="customer_id" id="customer_id" value="{{ old('customer_id') }}">
+                <input
+                    list="customer-list"
+                    id="customer_search"
+                    class="crm-input"
+                    placeholder="Cari Master Customer (ketik nama/telepon)"
+                    value="{{ old('customer_search', $selectedCustomerLabel) }}"
+                >
+                <datalist id="customer-list">
                     @foreach ($customers as $customer)
-                        <option value="{{ $customer->id }}" @selected(old('customer_id') == $customer->id)>{{ $customer->name }}{{ $customer->phone ? ' - '.$customer->phone : '' }}</option>
+                        <option
+                            value="{{ $customer->name }}{{ $customer->phone ? ' - '.$customer->phone : '' }}"
+                            data-id="{{ $customer->id }}"
+                            data-name="{{ $customer->name }}"
+                            data-phone="{{ $customer->phone ?? '' }}"
+                            data-email="{{ $customer->email ?? '' }}"
+                        ></option>
                     @endforeach
-                </select>
-                <input name="customer_name" value="{{ old('customer_name') }}" class="crm-input" placeholder="Nama customer *" required>
+                </datalist>
+                <input name="customer_name" id="customer_name" value="{{ old('customer_name') }}" class="crm-input" placeholder="Nama customer *" required>
                 <div class="grid gap-3 sm:grid-cols-2">
-                    <input name="customer_phone" value="{{ old('customer_phone') }}" class="crm-input" placeholder="No. telepon">
-                    <input name="customer_email" value="{{ old('customer_email') }}" type="email" class="crm-input" placeholder="Email">
+                    <input name="customer_phone" id="customer_phone" value="{{ old('customer_phone') }}" class="crm-input" placeholder="No. telepon">
+                    <input name="customer_email" id="customer_email" value="{{ old('customer_email') }}" type="email" class="crm-input" placeholder="Email">
                 </div>
                 <div class="grid gap-3 sm:grid-cols-2">
                     <select name="brand_id" class="crm-input">
@@ -70,4 +87,37 @@
             </form>
         </article>
     </section>
+
+    <script>
+        (function () {
+            const searchInput = document.getElementById('customer_search');
+            const customerIdInput = document.getElementById('customer_id');
+            const customerNameInput = document.getElementById('customer_name');
+            const customerPhoneInput = document.getElementById('customer_phone');
+            const customerEmailInput = document.getElementById('customer_email');
+            const datalist = document.getElementById('customer-list');
+
+            if (!searchInput || !customerIdInput || !customerNameInput || !customerPhoneInput || !customerEmailInput || !datalist) {
+                return;
+            }
+
+            const syncCustomerId = () => {
+                const value = searchInput.value.trim();
+                const options = Array.from(datalist.options);
+                const matched = options.find((opt) => opt.value === value);
+                if (matched) {
+                    customerIdInput.value = matched.dataset.id || '';
+                    customerNameInput.value = matched.dataset.name || '';
+                    customerPhoneInput.value = matched.dataset.phone || '';
+                    customerEmailInput.value = matched.dataset.email || '';
+                    return;
+                }
+
+                customerIdInput.value = '';
+            };
+
+            searchInput.addEventListener('change', syncCustomerId);
+            searchInput.addEventListener('blur', syncCustomerId);
+        })();
+    </script>
 @endsection

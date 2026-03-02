@@ -97,56 +97,59 @@
 
             <div class="mt-4 hidden overflow-x-auto lg:block">
                 <table class="w-full text-left text-sm">
-                    <thead class="text-xs uppercase tracking-wide text-slate-500">
-                        <tr>
-                            <th class="pb-2">Ticket</th>
-                            <th class="pb-2">Customer</th>
-                            <th class="pb-2">Brand</th>
-                            <th class="pb-2">Severity</th>
-                            <th class="pb-2">Status</th>
-                            <th class="pb-2">CAPA</th>
-                            <th class="pb-2"></th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-100">
-                        @forelse ($complaints as $complaint)
-                            <tr class="align-top">
-                                <td class="py-3 pr-2 font-semibold text-slate-800">{{ $complaint->ticket_number }}</td>
-                                <td class="py-3 pr-2">
-                                    <p class="font-medium text-slate-700">{{ $complaint->customer_name }}</p>
-                                    <p class="text-xs text-slate-500">{{ $complaint->complaint_date?->format('d M Y') }}</p>
-                                </td>
-                                <td class="py-3 pr-2 text-slate-700">{{ $complaint->brand?->name ?? '-' }}</td>
-                                <td class="py-3 pr-2">
-                                    <span class="rounded-full px-2.5 py-1 text-xs font-semibold {{ $severityTone($complaint->severity) }}">{{ $complaint->severity }}</span>
-                                </td>
-                                <td class="py-3 pr-2">
-                                    <span class="rounded-full px-2.5 py-1 text-xs font-semibold {{ $statusTone($complaint->status) }}">{{ $complaint->status }}</span>
-                                </td>
-                                <td class="py-3 pr-2 text-xs text-slate-600">{{ $complaint->capa_status }}</td>
-                                <td class="py-3 text-right">
-                                    <a href="{{ route('complaints.show', $complaint) }}" class="text-sm font-semibold text-cyan-700 hover:text-cyan-900">Detail</a>
-                                </td>
-                            </tr>
-                        @empty
+                        <thead class="text-xs uppercase tracking-wide text-slate-500">
                             <tr>
-                                <td colspan="7" class="py-8 text-center text-slate-500">Belum ada data complaint.</td>
+                                <th class="pb-2">Ticket</th>
+                                <th class="pb-2">Customer</th>
+                                <th class="pb-2">Brand</th>
+                                <th class="pb-2">Kode Produksi</th>
+                                <th class="pb-2">Severity</th>
+                                <th class="pb-2">Status</th>
+                                <th class="pb-2">CAPA</th>
+                                <th class="pb-2"></th>
                             </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
+                        </thead>
+                        <tbody>
+                            @forelse ($complaints as $complaint)
+                                <tr class="align-top border-b border-slate-200">
+                                    <td class="py-3 pr-2 font-semibold text-slate-800">{{ $complaint->ticket_number }}</td>
+                                    <td class="py-3 pr-2">
+                                        <p class="font-medium text-slate-700">{{ $complaint->customer_name }}</p>
+                                        <p class="text-xs text-slate-500">{{ $complaint->complaint_date?->format('d M Y') }}</p>
+                                    </td>
+                                    <td class="py-3 pr-2 text-slate-700">{{ $complaint->brand?->name ?? '-' }}</td>
+                                    <td class="py-3 pr-2 text-slate-700">{{ $complaint->production_code ?: '-' }}</td>
+                                    <td class="py-3 pr-2">
+                                        <span class="rounded-full px-2.5 py-1 text-xs font-semibold {{ $severityTone($complaint->severity) }}">{{ $complaint->severity }}</span>
+                                    </td>
+                                    <td class="py-3 pr-2">
+                                        <span class="rounded-full px-2.5 py-1 text-xs font-semibold {{ $statusTone($complaint->status) }}">{{ $complaint->status }}</span>
+                                    </td>
+                                    <td class="py-3 pr-2 text-xs text-slate-600">{{ $complaint->capa_status }}</td>
+                                    <td class="py-3 text-right">
+                                        <a href="{{ route('complaints.show', $complaint) }}" class="text-sm font-semibold text-cyan-700 hover:text-cyan-900">Detail</a>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="8" class="py-8 text-center text-slate-500">Belum ada data complaint.</td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
 
             <div class="mt-4 grid gap-3 lg:hidden">
                 @forelse ($complaints as $complaint)
                     <div class="rounded-2xl border border-slate-200 p-4">
-                        <div class="flex items-start justify-between gap-3">
-                            <div>
-                                <p class="font-semibold text-slate-800">{{ $complaint->ticket_number }}</p>
-                                <p class="text-sm text-slate-600">{{ $complaint->customer_name }}</p>
+                            <div class="flex items-start justify-between gap-3">
+                                <div>
+                                    <p class="font-semibold text-slate-800">{{ $complaint->ticket_number }}</p>
+                                    <p class="text-sm text-slate-600">{{ $complaint->customer_name }}</p>
+                                    <p class="text-xs text-slate-500">Kode Produksi: {{ $complaint->production_code ?: '-' }}</p>
+                                </div>
+                                <a href="{{ route('complaints.show', $complaint) }}" class="text-sm font-semibold text-cyan-700">Detail</a>
                             </div>
-                            <a href="{{ route('complaints.show', $complaint) }}" class="text-sm font-semibold text-cyan-700">Detail</a>
-                        </div>
                         <div class="mt-3 flex flex-wrap gap-2">
                             <span class="rounded-full px-2.5 py-1 text-xs font-semibold {{ $severityTone($complaint->severity) }}">{{ $complaint->severity }}</span>
                             <span class="rounded-full px-2.5 py-1 text-xs font-semibold {{ $statusTone($complaint->status) }}">{{ $complaint->status }}</span>

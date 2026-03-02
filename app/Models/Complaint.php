@@ -55,6 +55,7 @@ class Complaint extends Model
         'customer_name',
         'customer_phone',
         'customer_email',
+        'source',
         'brand_id',
         'complaint_category_id',
         'complaint_channel',
@@ -67,6 +68,7 @@ class Complaint extends Model
         'target_resolution_date',
         'capa_due_date',
         'description',
+        'extra_payload',
         'resolution_summary',
         'capa_root_cause',
         'capa_corrective_action',
@@ -88,6 +90,7 @@ class Complaint extends Model
             'capa_submitted_at' => 'datetime',
             'capa_approved_at' => 'datetime',
             'closed_at' => 'datetime',
+            'extra_payload' => 'array',
         ];
     }
 
