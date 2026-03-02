@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\Complaint\StoreComplaintAttachmentRequest;
 use App\Http\Requests\Complaint\StoreComplaintNoteRequest;
+use App\Http\Requests\Complaint\StoreReplacementProgressRequest;
 use App\Http\Requests\Complaint\StoreComplaintRequest;
 use App\Http\Requests\Complaint\UpdateComplaintStatusRequest;
 use App\Models\AuditLog;
@@ -16,6 +17,7 @@ use App\Models\Customer;
 use App\Models\User;
 use App\Notifications\ComplaintEventNotification;
 use App\Services\AuditLogger;
+use App\Services\ComplaintNotificationService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -28,6 +30,10 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ComplaintController extends Controller
 {
+    public function __construct(private readonly ComplaintNotificationService $complaintNotificationService)
+    {
+    }
+
     public function index(Request $request): View
     {
         $filters = $this->extractFilters($request);
@@ -51,7 +57,7 @@ class ComplaintController extends Controller
             'complaints' => $complaints,
             'summary' => $summary,
             'filters' => $filters,
-            'canCreate' => $request->user()?->hasRole(User::ROLE_ADMIN, User::ROLE_MANAGER, User::ROLE_QA, User::ROLE_CS) ?? false,
+            'canCreate' => $request->user()?->hasRole(User::ROLE_ADMIN, User::ROLE_MANAGER, User::ROLE_QA, User::ROLE_CS, User::ROLE_SALES, User::ROLE_MARKETING) ?? false,
             'canExport' => $request->user()?->hasRole(User::ROLE_ADMIN, User::ROLE_MANAGER, User::ROLE_QA, User::ROLE_VIEWER, User::ROLE_CS) ?? false,
             'statusOptions' => Complaint::STATUS_OPTIONS,
             'severityOptions' => ComplaintSeverity::query()->where('is_active', true)->orderBy('sort_order')->pluck('name')->values(),
@@ -73,7 +79,13 @@ class ComplaintController extends Controller
 
     public function show(Request $request, Complaint $complaint): View
     {
-        $complaint->load(['brand', 'category', 'customer', 'updates', 'attachments', 'capaApprover']);
+        $complaint->load(['brand', 'category', 'customer', 'updates', 'attachments', 'capaApprover', 'replacementProgresses.user']);
+
+        $user = $request->user();
+        $canUpdateWorkflow = $user ? $this->canUserWorkOnComplaint($user, $complaint) : false;
+        $canManageActionType = $user?->hasRole(User::ROLE_ADMIN, User::ROLE_QA) ?? false;
+        $canViewReplacementProgress = $user?->hasRole(User::ROLE_ADMIN, User::ROLE_QA) || $user?->department === User::DEPT_PPIC;
+        $canUpdateReplacementProgress = $user?->department === User::DEPT_PPIC;
 
         $auditLogs = AuditLog::query()
             ->with('user')
@@ -87,7 +99,12 @@ class ComplaintController extends Controller
             'complaint' => $complaint,
             'auditLogs' => $auditLogs,
             'statusOptions' => Complaint::STATUS_OPTIONS,
-            'canEdit' => $request->user()?->hasRole(User::ROLE_ADMIN, User::ROLE_MANAGER, User::ROLE_QA, User::ROLE_CS) ?? false,
+            'departmentOptions' => User::DEPARTMENT_OPTIONS,
+            'canEdit' => $canUpdateWorkflow,
+            'canUpdateWorkflow' => $canUpdateWorkflow,
+            'canManageActionType' => $canManageActionType,
+            'canViewReplacementProgress' => $canViewReplacementProgress,
+            'canUpdateReplacementProgress' => $canUpdateReplacementProgress,
             'canUpdateStatus' => $request->user()?->hasRole(User::ROLE_ADMIN, User::ROLE_MANAGER, User::ROLE_QA) ?? false,
             'canSubmitCapa' => $request->user()?->hasRole(User::ROLE_ADMIN, User::ROLE_QA) ?? false,
             'canApproveCapa' => $request->user()?->hasRole(User::ROLE_ADMIN, User::ROLE_MANAGER) ?? false,
@@ -101,6 +118,7 @@ class ComplaintController extends Controller
         $validated = $request->validated();
         $validated['ticket_number'] = $this->generateTicketNumber();
         $validated['capa_status'] = Complaint::CAPA_STATUS_DRAFT;
+        $validated['current_pool_department'] = User::DEPT_QA;
 
         unset($validated['attachments']);
 
@@ -117,8 +135,11 @@ class ComplaintController extends Controller
 
         $complaint->updates()->create([
             'event_type' => 'created',
+            'user_id' => $request->user()?->id,
             'status_after' => $complaint->status,
             'author' => $request->string('author')->toString() ?: $request->user()?->name ?: 'System',
+            'department' => $request->user()?->department ?? User::DEPT_GENERAL,
+            'pool_to_department' => User::DEPT_QA,
             'note' => 'Tiket dibuat dan menunggu tindak lanjut.',
             'event_at' => now(),
         ]);
@@ -137,6 +158,7 @@ class ComplaintController extends Controller
         ]);
 
         $this->notifyStakeholders($complaint, 'created', 'Tiket complaint baru dibuat.');
+        $this->complaintNotificationService->notifyConfiguredRecipientsForIncomingComplaint($complaint);
 
         return redirect()
             ->route('complaints.show', $complaint)
@@ -145,13 +167,13 @@ class ComplaintController extends Controller
 
     public function updateStatus(UpdateComplaintStatusRequest $request, Complaint $complaint): RedirectResponse
     {
+        $this->abortIfUnauthorizedWorkflowUpdate($request, $complaint);
+
         $validated = $request->validated();
 
-        if (($validated['status'] ?? null) === 'Closed') {
-            return back()->withErrors(['status' => 'Penutupan tiket menggunakan workflow CAPA (Approve -> Close).']);
-        }
-
         $statusBefore = $complaint->status;
+        $poolBefore = $complaint->current_pool_department;
+        $poolToDepartment = $validated['pool_to_department'] ?? $complaint->current_pool_department;
 
         $complaint->fill([
             'status' => $validated['status'],
@@ -159,15 +181,19 @@ class ComplaintController extends Controller
             'target_resolution_date' => $validated['target_resolution_date'] ?? $complaint->target_resolution_date,
             'resolution_summary' => $validated['resolution_summary'] ?? $complaint->resolution_summary,
             'compensation_type' => $validated['compensation_type'] ?? $complaint->compensation_type,
-            'closed_at' => $validated['status'] === 'Resolved' ? Carbon::now() : null,
+            'current_pool_department' => $poolToDepartment,
+            'closed_at' => $validated['status'] === 'Closed' ? Carbon::now() : null,
         ])->save();
 
         $complaint->updates()->create([
-            'event_type' => 'status_update',
+            'event_type' => 'workflow_progress',
+            'user_id' => $request->user()?->id,
             'status_before' => $statusBefore,
             'status_after' => $validated['status'],
-            'author' => $validated['author'] ?? $request->user()?->name ?? 'Tim QA',
-            'note' => $validated['note'] ?? null,
+            'author' => $request->user()?->name ?? ($validated['author'] ?? 'System'),
+            'department' => $request->user()?->department ?? User::DEPT_GENERAL,
+            'pool_to_department' => $poolToDepartment,
+            'note' => $validated['detail_progress'],
             'event_at' => now(),
         ]);
 
@@ -179,12 +205,25 @@ class ComplaintController extends Controller
         $this->notifyStakeholders(
             $complaint,
             'status_updated',
-            "Status berubah dari {$statusBefore} menjadi {$validated['status']}.",
+            "Status berubah dari {$statusBefore} menjadi {$validated['status']}. Progress: {$validated['detail_progress']}",
         );
+
+        if ($poolToDepartment !== $poolBefore) {
+            $this->complaintNotificationService->notifyDepartmentUsers(
+                $complaint,
+                $poolToDepartment,
+                'department_pooled',
+                "Anda menerima pool ticket {$complaint->ticket_number} untuk ditindaklanjuti."
+            );
+        }
+
+        if ($validated['status'] === 'Closed' && $statusBefore !== 'Closed') {
+            $this->complaintNotificationService->notifyMarketingOnClosed($complaint);
+        }
 
         return redirect()
             ->route('complaints.show', $complaint)
-            ->with('success', 'Status tiket berhasil diperbarui.');
+            ->with('success', 'Progress workflow berhasil diperbarui.');
     }
 
     public function submitCapa(Request $request, Complaint $complaint): RedirectResponse
@@ -325,6 +364,7 @@ class ComplaintController extends Controller
         AuditLogger::log($request, 'complaint.closed', $complaint, ['status_before' => $statusBefore]);
 
         $this->notifyStakeholders($complaint, 'closed', 'Tiket complaint telah ditutup.');
+        $this->complaintNotificationService->notifyMarketingOnClosed($complaint);
 
         return redirect()
             ->route('complaints.show', $complaint)
@@ -333,12 +373,17 @@ class ComplaintController extends Controller
 
     public function storeNote(StoreComplaintNoteRequest $request, Complaint $complaint): RedirectResponse
     {
+        $this->abortIfUnauthorizedWorkflowUpdate($request, $complaint);
+
         $validated = $request->validated();
 
         $complaint->updates()->create([
             'event_type' => 'note',
+            'user_id' => $request->user()?->id,
             'status_after' => $complaint->status,
             'author' => $validated['author'],
+            'department' => $request->user()?->department ?? User::DEPT_GENERAL,
+            'pool_to_department' => $complaint->current_pool_department,
             'note' => $validated['note'],
             'event_at' => now(),
         ]);
@@ -352,6 +397,8 @@ class ComplaintController extends Controller
 
     public function storeAttachment(StoreComplaintAttachmentRequest $request, Complaint $complaint): RedirectResponse
     {
+        $this->abortIfUnauthorizedWorkflowUpdate($request, $complaint);
+
         $this->saveAttachments(
             complaint: $complaint,
             files: $request->file('files'),
@@ -360,8 +407,11 @@ class ComplaintController extends Controller
 
         $complaint->updates()->create([
             'event_type' => 'attachment',
+            'user_id' => $request->user()?->id,
             'status_after' => $complaint->status,
             'author' => $request->input('author') ?: $request->user()?->name ?: 'System',
+            'department' => $request->user()?->department ?? User::DEPT_GENERAL,
+            'pool_to_department' => $complaint->current_pool_department,
             'note' => 'Bukti complaint ditambahkan.',
             'event_at' => now(),
         ]);
@@ -451,6 +501,80 @@ class ComplaintController extends Controller
         ]);
     }
 
+    public function updateActionType(Request $request, Complaint $complaint): RedirectResponse
+    {
+        abort_unless($request->user()?->hasRole(User::ROLE_ADMIN, User::ROLE_QA), 403);
+
+        $validated = $request->validate([
+            'action_type' => ['required', 'in:'.implode(',', Complaint::ACTION_TYPE_OPTIONS)],
+        ]);
+
+        $complaint->update([
+            'action_type' => $validated['action_type'],
+        ]);
+
+        $complaint->updates()->create([
+            'event_type' => 'action_type_updated',
+            'user_id' => $request->user()?->id,
+            'status_after' => $complaint->status,
+            'author' => $request->user()?->name ?? 'QA',
+            'department' => $request->user()?->department ?? User::DEPT_GENERAL,
+            'pool_to_department' => $complaint->current_pool_department,
+            'note' => 'Action type diubah menjadi '.$validated['action_type'],
+            'event_at' => now(),
+        ]);
+
+        AuditLogger::log($request, 'complaint.action_type_updated', $complaint, $validated);
+
+        if ($validated['action_type'] === Complaint::ACTION_TYPE_REPLACE_PRODUCT) {
+            $this->complaintNotificationService->notifyDepartmentUsers(
+                $complaint,
+                User::DEPT_PPIC,
+                'replacement_required',
+                "Complaint {$complaint->ticket_number} membutuhkan proses penggantian barang."
+            );
+        }
+
+        return back()->with('success', 'Action type complaint berhasil diperbarui.');
+    }
+
+    public function storeReplacementProgress(StoreReplacementProgressRequest $request, Complaint $complaint): RedirectResponse
+    {
+        $user = $request->user();
+        abort_unless($user?->department === User::DEPT_PPIC || $user?->hasRole(User::ROLE_ADMIN, User::ROLE_QA), 403);
+
+        $validated = $request->validated();
+
+        $complaint->replacementProgresses()->create([
+            'user_id' => $user?->id,
+            'department' => $user?->department ?? User::DEPT_GENERAL,
+            'item_name' => $validated['item_name'],
+            'quantity' => (int) $validated['quantity'],
+            'delivery_note_number' => $validated['delivery_note_number'],
+            'note' => $validated['note'] ?? null,
+            'event_at' => now(),
+        ]);
+
+        $complaint->updates()->create([
+            'event_type' => 'replacement_progress',
+            'user_id' => $user?->id,
+            'status_after' => $complaint->status,
+            'author' => $user?->name ?? 'PPIC',
+            'department' => $user?->department ?? User::DEPT_PPIC,
+            'pool_to_department' => $complaint->current_pool_department,
+            'note' => "Progress penggantian barang: {$validated['item_name']} qty {$validated['quantity']}, Surat Jalan {$validated['delivery_note_number']}. ".($validated['note'] ?? ''),
+            'event_at' => now(),
+        ]);
+
+        AuditLogger::log($request, 'complaint.replacement_progress_added', $complaint, [
+            'item_name' => $validated['item_name'],
+            'quantity' => (int) $validated['quantity'],
+            'delivery_note_number' => $validated['delivery_note_number'],
+        ]);
+
+        return back()->with('success', 'Progress penggantian barang berhasil ditambahkan.');
+    }
+
     private function saveAttachments(Complaint $complaint, array $files, ?string $author): void
     {
         foreach ($files as $file) {
@@ -522,5 +646,25 @@ class ComplaintController extends Controller
         } while (Complaint::query()->where('ticket_number', $ticketNumber)->exists());
 
         return $ticketNumber;
+    }
+
+    private function canUserWorkOnComplaint(User $user, Complaint $complaint): bool
+    {
+        if ($complaint->status === 'Closed') {
+            return false;
+        }
+
+        if ($user->hasRole(User::ROLE_ADMIN, User::ROLE_QA)) {
+            return true;
+        }
+
+        return ! empty($complaint->current_pool_department)
+            && $user->department === $complaint->current_pool_department;
+    }
+
+    private function abortIfUnauthorizedWorkflowUpdate(Request $request, Complaint $complaint): void
+    {
+        $user = $request->user();
+        abort_unless($user && $this->canUserWorkOnComplaint($user, $complaint), 403, 'Ticket belum dipool ke departemen Anda.');
     }
 }

@@ -26,20 +26,26 @@ Route::middleware('auth')->group(function (): void {
 
     Route::get('/complaints', [ComplaintController::class, 'index'])->name('complaints.index');
     Route::get('/complaints/create', [ComplaintController::class, 'create'])
-        ->middleware('role:admin,manager,qa,cs')
+        ->middleware('role:admin,manager,qa,cs,sales,marketing')
         ->name('complaints.create');
     Route::get('/complaints/export/excel', [ComplaintController::class, 'exportExcel'])->name('complaints.export.excel');
     Route::get('/complaints/export/pdf', [ComplaintController::class, 'exportPdf'])->name('complaints.export.pdf');
 
     Route::post('/complaints', [ComplaintController::class, 'store'])
-        ->middleware('role:admin,manager,qa,cs')
+        ->middleware('role:admin,manager,qa,cs,sales,marketing')
         ->name('complaints.store');
 
     Route::get('/complaints/{complaint}', [ComplaintController::class, 'show'])->name('complaints.show');
 
     Route::patch('/complaints/{complaint}/status', [ComplaintController::class, 'updateStatus'])
-        ->middleware('role:admin,manager,qa')
+        ->middleware('role:admin,manager,qa,cs,sales,marketing,ppic')
         ->name('complaints.status');
+    Route::patch('/complaints/{complaint}/action-type', [ComplaintController::class, 'updateActionType'])
+        ->middleware('role:admin,qa')
+        ->name('complaints.action_type');
+    Route::post('/complaints/{complaint}/replacement-progress', [ComplaintController::class, 'storeReplacementProgress'])
+        ->middleware('role:admin,qa,ppic')
+        ->name('complaints.replacement_progress.store');
 
     Route::patch('/complaints/{complaint}/capa/submit', [ComplaintController::class, 'submitCapa'])
         ->middleware('role:admin,qa')
@@ -55,11 +61,11 @@ Route::middleware('auth')->group(function (): void {
         ->name('complaints.capa.close');
 
     Route::post('/complaints/{complaint}/notes', [ComplaintController::class, 'storeNote'])
-        ->middleware('role:admin,manager,qa,cs')
+        ->middleware('role:admin,manager,qa,cs,sales,marketing,ppic')
         ->name('complaints.notes');
 
     Route::post('/complaints/{complaint}/attachments', [ComplaintController::class, 'storeAttachment'])
-        ->middleware('role:admin,manager,qa,cs')
+        ->middleware('role:admin,manager,qa,cs,sales,marketing,ppic')
         ->name('complaints.attachments.store');
 
     Route::get('/complaints/{complaint}/attachments/{attachment}', [ComplaintController::class, 'downloadAttachment'])
@@ -83,5 +89,9 @@ Route::middleware('auth')->group(function (): void {
         Route::post('/master-data/customers', [MasterDataController::class, 'storeCustomer'])->name('master.customers.store');
         Route::put('/master-data/customers/{customer}', [MasterDataController::class, 'updateCustomer'])->name('master.customers.update');
         Route::delete('/master-data/customers/{customer}', [MasterDataController::class, 'deleteCustomer'])->name('master.customers.delete');
+
+        Route::post('/master-data/notification-recipients', [MasterDataController::class, 'storeNotificationRecipient'])->name('master.notification_recipients.store');
+        Route::put('/master-data/notification-recipients/{recipient}', [MasterDataController::class, 'updateNotificationRecipient'])->name('master.notification_recipients.update');
+        Route::delete('/master-data/notification-recipients/{recipient}', [MasterDataController::class, 'deleteNotificationRecipient'])->name('master.notification_recipients.delete');
     });
 });

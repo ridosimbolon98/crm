@@ -35,6 +35,14 @@ class AuthController extends Controller
             return back()->withErrors(['email' => 'Akun nonaktif. Hubungi administrator.']);
         }
 
+        if (empty($request->user()?->email) || empty($request->user()?->department)) {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return back()->withErrors(['email' => 'Akun wajib memiliki email dan departemen. Hubungi administrator.']);
+        }
+
         return redirect()->intended(route('dashboard.index'));
     }
 

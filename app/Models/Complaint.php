@@ -49,6 +49,14 @@ class Complaint extends Model
         'Social Media',
     ];
 
+    public const ACTION_TYPE_REPLACE_PRODUCT = 'replace_product';
+    public const ACTION_TYPE_REPLACE_MONEY = 'replace_money';
+
+    public const ACTION_TYPE_OPTIONS = [
+        self::ACTION_TYPE_REPLACE_PRODUCT,
+        self::ACTION_TYPE_REPLACE_MONEY,
+    ];
+
     protected $fillable = [
         'ticket_number',
         'customer_id',
@@ -64,6 +72,8 @@ class Complaint extends Model
         'severity',
         'status',
         'capa_status',
+        'action_type',
+        'current_pool_department',
         'assigned_to',
         'target_resolution_date',
         'capa_due_date',
@@ -140,5 +150,13 @@ class Complaint extends Model
     public function attachments(): HasMany
     {
         return $this->hasMany(ComplaintAttachment::class)->latest();
+    }
+
+    /**
+     * @return HasMany<ComplaintReplacementProgress, $this>
+     */
+    public function replacementProgresses(): HasMany
+    {
+        return $this->hasMany(ComplaintReplacementProgress::class)->latest('event_at');
     }
 }

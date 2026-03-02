@@ -19,6 +19,7 @@
                 <button class="crm-tab {{ $tab === 'category' ? 'is-active' : '' }}" data-tab="category">Category</button>
                 <button class="crm-tab {{ $tab === 'severity' ? 'is-active' : '' }}" data-tab="severity">Severity</button>
                 <button class="crm-tab {{ $tab === 'customer' ? 'is-active' : '' }}" data-tab="customer">Customer</button>
+                <button class="crm-tab {{ $tab === 'notification' ? 'is-active' : '' }}" data-tab="notification">Notif Email</button>
             </div>
 
             <div class="mt-4">
@@ -224,6 +225,58 @@
                         {{ $customers->appends(['tab' => 'customer'])->links() }}
                     </div>
                 </section>
+
+                <section class="master-pane {{ $tab === 'notification' ? '' : 'hidden' }}" data-pane="notification">
+                    <div class="mb-3 flex items-center justify-between">
+                        <h3 class="font-display text-lg font-semibold text-slate-900">Penerima Notifikasi Complaint Masuk</h3>
+                        <button class="crm-btn-primary" data-open-modal="modal-notification-recipient">Tambah Email Penerima</button>
+                    </div>
+                    <div class="overflow-x-auto rounded-2xl border border-slate-200">
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                                <tr>
+                                    <th class="px-3 py-2">Nama</th>
+                                    <th class="px-3 py-2">Email</th>
+                                    <th class="px-3 py-2">Event</th>
+                                    <th class="px-3 py-2">Status</th>
+                                    <th class="px-3 py-2">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                @forelse ($notificationRecipients as $recipient)
+                                    <tr>
+                                        <td class="px-3 py-2">{{ $recipient->name ?: '-' }}</td>
+                                        <td class="px-3 py-2">{{ $recipient->email }}</td>
+                                        <td class="px-3 py-2">{{ $recipient->event_key }}</td>
+                                        <td class="px-3 py-2">{{ $recipient->is_active ? 'Active' : 'Inactive' }}</td>
+                                        <td class="px-3 py-2">
+                                            <div class="flex flex-wrap gap-2">
+                                                <button
+                                                    type="button"
+                                                    class="crm-btn-secondary"
+                                                    data-open-recipient-edit="modal-notification-recipient-edit"
+                                                    data-recipient-update-url="{{ route('master.notification_recipients.update', $recipient) }}"
+                                                    data-recipient-name="{{ $recipient->name ?? '' }}"
+                                                    data-recipient-email="{{ $recipient->email }}"
+                                                    data-recipient-active="{{ $recipient->is_active ? '1' : '0' }}"
+                                                >
+                                                    Edit
+                                                </button>
+                                                <button class="crm-btn-secondary" type="submit" form="delete-recipient-{{ $recipient->id }}">Hapus</button>
+                                            </div>
+                                            <form id="delete-recipient-{{ $recipient->id }}" class="hidden" method="POST" action="{{ route('master.notification_recipients.delete', $recipient) }}">
+                                                @csrf
+                                                @method('DELETE')
+                                            </form>
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr><td colspan="5" class="px-3 py-4 text-center text-slate-500">Belum ada data email penerima notifikasi.</td></tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
             </div>
         </article>
     </section>
@@ -341,6 +394,45 @@
         </div>
     </div>
 
+    <div class="crm-modal hidden" id="modal-notification-recipient">
+        <div class="crm-modal-card">
+            <div class="flex items-center justify-between">
+                <h3 class="font-display text-lg font-semibold text-slate-900">Tambah Email Penerima</h3>
+                <button class="crm-btn-secondary" data-close-modal="modal-notification-recipient">Tutup</button>
+            </div>
+            <form method="POST" action="{{ route('master.notification_recipients.store') }}" class="mt-3 grid gap-3">
+                @csrf
+                <input name="name" class="crm-input" placeholder="Nama (opsional)">
+                <input name="email" type="email" class="crm-input" placeholder="Email Penerima" required>
+                <select name="is_active" class="crm-input">
+                    <option value="1">Active</option>
+                    <option value="0">Inactive</option>
+                </select>
+                <button class="crm-btn-primary" type="submit">Simpan</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="crm-modal hidden" id="modal-notification-recipient-edit">
+        <div class="crm-modal-card">
+            <div class="flex items-center justify-between">
+                <h3 class="font-display text-lg font-semibold text-slate-900">Edit Email Penerima</h3>
+                <button class="crm-btn-secondary" data-close-modal="modal-notification-recipient-edit">Tutup</button>
+            </div>
+            <form method="POST" action="#" id="notification-recipient-edit-form" class="mt-3 grid gap-3">
+                @csrf
+                @method('PUT')
+                <input name="name" id="notification-recipient-edit-name" class="crm-input" placeholder="Nama (opsional)">
+                <input name="email" id="notification-recipient-edit-email" type="email" class="crm-input" placeholder="Email Penerima" required>
+                <select name="is_active" id="notification-recipient-edit-active" class="crm-input">
+                    <option value="1">Active</option>
+                    <option value="0">Inactive</option>
+                </select>
+                <button class="crm-btn-primary" type="submit">Simpan Perubahan</button>
+            </form>
+        </div>
+    </div>
+
     <script>
         (function () {
             const tabs = document.querySelectorAll('.crm-tab');
@@ -402,6 +494,23 @@
                     if (customerEditAddress) customerEditAddress.value = btn.dataset.customerAddress || '';
                     if (customerEditActive) customerEditActive.value = btn.dataset.customerActive || '1';
                     customerEditModal.classList.remove('hidden');
+                });
+            });
+
+            const recipientEditModal = document.getElementById('modal-notification-recipient-edit');
+            const recipientEditForm = document.getElementById('notification-recipient-edit-form');
+            const recipientEditName = document.getElementById('notification-recipient-edit-name');
+            const recipientEditEmail = document.getElementById('notification-recipient-edit-email');
+            const recipientEditActive = document.getElementById('notification-recipient-edit-active');
+
+            document.querySelectorAll('[data-open-recipient-edit]').forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    if (!recipientEditModal || !recipientEditForm) return;
+                    recipientEditForm.action = btn.dataset.recipientUpdateUrl || '#';
+                    if (recipientEditName) recipientEditName.value = btn.dataset.recipientName || '';
+                    if (recipientEditEmail) recipientEditEmail.value = btn.dataset.recipientEmail || '';
+                    if (recipientEditActive) recipientEditActive.value = btn.dataset.recipientActive || '1';
+                    recipientEditModal.classList.remove('hidden');
                 });
             });
 

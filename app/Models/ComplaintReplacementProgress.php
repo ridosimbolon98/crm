@@ -6,19 +6,19 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class ComplaintUpdate extends Model
+class ComplaintReplacementProgress extends Model
 {
     use HasFactory;
+
+    protected $table = 'complaint_replacement_progresses';
 
     protected $fillable = [
         'complaint_id',
         'user_id',
-        'event_type',
-        'status_before',
-        'status_after',
-        'author',
         'department',
-        'pool_to_department',
+        'item_name',
+        'quantity',
+        'delivery_note_number',
         'note',
         'event_at',
     ];

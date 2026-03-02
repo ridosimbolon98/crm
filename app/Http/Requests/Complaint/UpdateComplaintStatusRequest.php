@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Complaint;
 
 use App\Models\Complaint;
+use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateComplaintStatusRequest extends FormRequest
@@ -28,7 +29,8 @@ class UpdateComplaintStatusRequest extends FormRequest
             'target_resolution_date' => ['nullable', 'date'],
             'resolution_summary' => ['nullable', 'string', 'max:5000'],
             'compensation_type' => ['nullable', 'string', 'max:60'],
-            'note' => ['nullable', 'string', 'max:5000'],
+            'detail_progress' => ['required', 'string', 'max:5000'],
+            'pool_to_department' => ['nullable', 'in:'.implode(',', User::DEPARTMENT_OPTIONS)],
             'author' => ['nullable', 'string', 'max:120'],
         ];
     }

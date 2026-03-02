@@ -7,6 +7,7 @@ use App\Models\Complaint;
 use App\Models\ComplaintCategory;
 use App\Models\ComplaintSeverity;
 use App\Models\Customer;
+use App\Models\NotificationRecipient;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -27,6 +28,7 @@ class DatabaseSeeder extends Seeder
                 'phone' => '628111111111',
                 'password' => 'password',
                 'role' => User::ROLE_ADMIN,
+                'department' => User::DEPT_MANAGEMENT,
                 'is_active' => true,
             ],
             [
@@ -35,6 +37,7 @@ class DatabaseSeeder extends Seeder
                 'phone' => '628122222222',
                 'password' => 'password',
                 'role' => User::ROLE_QA,
+                'department' => User::DEPT_QA,
                 'is_active' => true,
             ],
             [
@@ -43,6 +46,7 @@ class DatabaseSeeder extends Seeder
                 'phone' => '628133333333',
                 'password' => 'password',
                 'role' => User::ROLE_MANAGER,
+                'department' => User::DEPT_MANAGEMENT,
                 'is_active' => true,
             ],
             [
@@ -51,6 +55,34 @@ class DatabaseSeeder extends Seeder
                 'phone' => '628144444444',
                 'password' => 'password',
                 'role' => User::ROLE_CS,
+                'department' => User::DEPT_CS,
+                'is_active' => true,
+            ],
+            [
+                'name' => 'Sales Area',
+                'email' => 'sales@crm.local',
+                'phone' => '628155555555',
+                'password' => 'password',
+                'role' => User::ROLE_SALES,
+                'department' => User::DEPT_SALES,
+                'is_active' => true,
+            ],
+            [
+                'name' => 'Marketing Team',
+                'email' => 'marketing@crm.local',
+                'phone' => '628166666666',
+                'password' => 'password',
+                'role' => User::ROLE_MARKETING,
+                'department' => User::DEPT_MARKETING,
+                'is_active' => true,
+            ],
+            [
+                'name' => 'PPIC Officer',
+                'email' => 'ppic@crm.local',
+                'phone' => '628177777777',
+                'password' => 'password',
+                'role' => User::ROLE_PPIC,
+                'department' => User::DEPT_PPIC,
                 'is_active' => true,
             ],
         ];
@@ -61,6 +93,15 @@ class DatabaseSeeder extends Seeder
                 $userData
             );
         }
+
+        NotificationRecipient::updateOrCreate(
+            ['email' => 'notifikasi.complaint@crm.local'],
+            [
+                'name' => 'Distribution List Complaint',
+                'event_key' => NotificationRecipient::EVENT_COMPLAINT_CREATED,
+                'is_active' => true,
+            ]
+        );
 
         Brand::query()->upsert([
             ['name' => 'Nusantara Mild', 'code' => 'NMILD', 'description' => 'Sigaret Kretek Mesin'],

@@ -16,6 +16,9 @@ class User extends Authenticatable
     public const ROLE_MANAGER = 'manager';
     public const ROLE_QA = 'qa';
     public const ROLE_CS = 'cs';
+    public const ROLE_SALES = 'sales';
+    public const ROLE_MARKETING = 'marketing';
+    public const ROLE_PPIC = 'ppic';
     public const ROLE_VIEWER = 'viewer';
 
     public const ROLE_OPTIONS = [
@@ -23,7 +26,28 @@ class User extends Authenticatable
         self::ROLE_MANAGER,
         self::ROLE_QA,
         self::ROLE_CS,
+        self::ROLE_SALES,
+        self::ROLE_MARKETING,
+        self::ROLE_PPIC,
         self::ROLE_VIEWER,
+    ];
+
+    public const DEPT_GENERAL = 'general';
+    public const DEPT_QA = 'qa';
+    public const DEPT_PPIC = 'ppic';
+    public const DEPT_MARKETING = 'marketing';
+    public const DEPT_SALES = 'sales';
+    public const DEPT_CS = 'customer_service';
+    public const DEPT_MANAGEMENT = 'management';
+
+    public const DEPARTMENT_OPTIONS = [
+        self::DEPT_QA,
+        self::DEPT_PPIC,
+        self::DEPT_MARKETING,
+        self::DEPT_SALES,
+        self::DEPT_CS,
+        self::DEPT_MANAGEMENT,
+        self::DEPT_GENERAL,
     ];
 
     /**
@@ -37,6 +61,7 @@ class User extends Authenticatable
         'phone',
         'password',
         'role',
+        'department',
         'is_active',
     ];
 

@@ -39,6 +39,8 @@
           <p><span class="font-semibold">Kategori:</span> {{ $complaint->category?->name ?? '-' }}</p>
           <p><span class="font-semibold">Channel:</span> {{ $complaint->complaint_channel }}</p>
           <p><span class="font-semibold">PIC:</span> {{ $complaint->assigned_to ?: '-' }}</p>
+          <p><span class="font-semibold">Pool Departemen Saat Ini:</span> {{ $complaint->current_pool_department ?: '-' }}</p>
+          <p><span class="font-semibold">Action Type:</span> {{ $complaint->action_type ?: '-' }}</p>
           <p><span class="font-semibold">Kode Produksi:</span> {{ $complaint->production_code ?: '-' }}</p>
           <p><span class="font-semibold">Target Resolve:</span>
             {{ $complaint->target_resolution_date?->format('d M Y') ?: '-' }}</p>
@@ -68,26 +70,46 @@
         </div>
       </article>
 
-      @if ($canUpdateStatus)
+      @if ($canUpdateWorkflow)
         <article class="crm-panel">
-          <h3 class="font-display text-lg font-semibold text-slate-900">Update Status Ticket</h3>
+          <h3 class="font-display text-lg font-semibold text-slate-900">Update Progress Workflow</h3>
           <form method="POST" action="{{ route('complaints.status', $complaint) }}" class="mt-3 grid gap-3">
             @csrf
             @method('PATCH')
-            <input name="author" class="crm-input" value="{{ auth()->user()?->name }}" placeholder="Nama petugas">
+            <input class="crm-input bg-slate-50" value="{{ auth()->user()?->name }}" readonly>
+            <input class="crm-input bg-slate-50" value="{{ auth()->user()?->department }}" readonly>
             <select name="status" class="crm-input" required>
               @foreach ($statusOptions as $status)
-                @if ($status !== 'Closed')
-                  <option value="{{ $status }}" @selected($complaint->status === $status)>{{ $status }}</option>
-                @endif
+                <option value="{{ $status }}" @selected($complaint->status === $status)>{{ $status }}</option>
+              @endforeach
+            </select>
+            <select name="pool_to_department" class="crm-input">
+              <option value="">Pool tetap di departemen saat ini</option>
+              @foreach ($departmentOptions as $department)
+                <option value="{{ $department }}" @selected($complaint->current_pool_department === $department)>{{ $department }}</option>
               @endforeach
             </select>
             <input name="assigned_to" value="{{ $complaint->assigned_to }}" class="crm-input" placeholder="PIC">
             <input type="date" name="target_resolution_date"
               value="{{ $complaint->target_resolution_date?->toDateString() }}" class="crm-input">
             <textarea name="resolution_summary" class="crm-input min-h-20" placeholder="Ringkasan penyelesaian">{{ $complaint->resolution_summary }}</textarea>
-            <textarea name="note" class="crm-input min-h-20" placeholder="Catatan perubahan status"></textarea>
+            <textarea name="detail_progress" class="crm-input min-h-20" placeholder="Detail progress *" required></textarea>
             <button class="crm-btn-primary" type="submit">Simpan Perubahan</button>
+          </form>
+        </article>
+      @endif
+
+      @if ($canManageActionType)
+        <article class="crm-panel">
+          <h3 class="font-display text-lg font-semibold text-slate-900">Action Type Complaint (QA/Admin)</h3>
+          <form method="POST" action="{{ route('complaints.action_type', $complaint) }}" class="mt-3 grid gap-3">
+            @csrf
+            @method('PATCH')
+            <select name="action_type" class="crm-input" required>
+              <option value="replace_product" @selected($complaint->action_type === 'replace_product')>Penggantian Barang</option>
+              <option value="replace_money" @selected($complaint->action_type === 'replace_money')>Penggantian Uang</option>
+            </select>
+            <button class="crm-btn-secondary" type="submit">Simpan Action Type</button>
           </form>
         </article>
       @endif
@@ -171,6 +193,9 @@
                 <p class="text-xs text-slate-500">{{ $update->event_at?->format('d M Y H:i') }}</p>
               </div>
               <p class="mt-1 text-xs text-slate-500">Oleh {{ $update->author ?: 'System' }}</p>
+              @if ($update->department || $update->pool_to_department)
+                <p class="mt-1 text-xs text-slate-500">Dept: {{ $update->department ?: '-' }} | Pool: {{ $update->pool_to_department ?: '-' }}</p>
+              @endif
               @if ($update->note)
                 <p class="mt-2 text-slate-700">{{ $update->note }}</p>
               @endif
@@ -180,6 +205,38 @@
           @endforelse
         </div>
       </article>
+
+      @if ($canViewReplacementProgress)
+        <article class="crm-panel">
+          <h3 class="font-display text-lg font-semibold text-slate-900">Progress Penggantian Barang (PPIC)</h3>
+
+          @if ($canUpdateReplacementProgress && $complaint->action_type === 'replace_product')
+            <form method="POST" action="{{ route('complaints.replacement_progress.store', $complaint) }}" class="mt-3 grid gap-3">
+              @csrf
+              <input name="item_name" class="crm-input" placeholder="Nama barang *" required>
+              <input name="quantity" type="number" min="1" class="crm-input" placeholder="Qty *" required>
+              <input name="delivery_note_number" class="crm-input" placeholder="No Surat Jalan *" required>
+              <textarea name="note" class="crm-input min-h-20" placeholder="Detail progres"></textarea>
+              <button class="crm-btn-secondary" type="submit">Tambah Progress PPIC</button>
+            </form>
+          @endif
+
+          <div class="mt-3 space-y-2">
+            @forelse ($complaint->replacementProgresses as $progress)
+              <div class="rounded-xl border border-slate-200 p-3 text-sm">
+                <p class="font-semibold text-slate-800">{{ $progress->item_name }} ({{ $progress->quantity }})</p>
+                <p class="text-xs text-slate-500">SJ: {{ $progress->delivery_note_number }} | {{ $progress->event_at?->format('d M Y H:i') }}</p>
+                <p class="text-xs text-slate-500">Oleh: {{ $progress->user?->name ?? '-' }} ({{ $progress->department }})</p>
+                @if ($progress->note)
+                  <p class="mt-1 text-slate-700">{{ $progress->note }}</p>
+                @endif
+              </div>
+            @empty
+              <p class="text-sm text-slate-500">Belum ada progress penggantian barang.</p>
+            @endforelse
+          </div>
+        </article>
+      @endif
 
       <article class="crm-panel">
         <h3 class="font-display text-lg font-semibold text-slate-900">Lampiran Bukti</h3>

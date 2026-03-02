@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Complaint;
+use App\Models\NotificationRecipient;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -118,5 +119,39 @@ class ExampleTest extends TestCase
         $this->actingAs($user)
             ->get(route('guide.index'))
             ->assertStatus(200);
+    }
+
+    public function test_admin_can_manage_notification_recipient_master(): void
+    {
+        $admin = User::factory()->create([
+            'role' => User::ROLE_ADMIN,
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($admin)
+            ->post(route('master.notification_recipients.store'), [
+                'name' => 'QA Alert',
+                'email' => 'qa.alert@example.com',
+                'is_active' => 1,
+            ])->assertRedirect();
+
+        $this->assertDatabaseHas('notification_recipients', [
+            'email' => 'qa.alert@example.com',
+            'is_active' => 1,
+        ]);
+
+        $recipient = NotificationRecipient::query()->where('email', 'qa.alert@example.com')->firstOrFail();
+
+        $this->actingAs($admin)
+            ->put(route('master.notification_recipients.update', $recipient), [
+                'name' => 'QA Alert Updated',
+                'email' => 'qa.alert@example.com',
+                'is_active' => 0,
+            ])->assertRedirect();
+
+        $this->assertDatabaseHas('notification_recipients', [
+            'id' => $recipient->id,
+            'is_active' => 0,
+        ]);
     }
 }

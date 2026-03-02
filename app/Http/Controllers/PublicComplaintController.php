@@ -10,6 +10,7 @@ use App\Models\Customer;
 use App\Models\User;
 use App\Notifications\ComplaintEventNotification;
 use App\Services\AuditLogger;
+use App\Services\ComplaintNotificationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Notification;
@@ -18,6 +19,10 @@ use Illuminate\View\View;
 
 class PublicComplaintController extends Controller
 {
+    public function __construct(private readonly ComplaintNotificationService $complaintNotificationService)
+    {
+    }
+
     public function landing(Request $request): View|RedirectResponse
     {
         if ($request->user()) {
@@ -74,6 +79,7 @@ class PublicComplaintController extends Controller
             'severity' => 'Medium',
             'status' => 'Open',
             'description' => $validated['story'],
+            'current_pool_department' => User::DEPT_QA,
             'extra_payload' => [
                 'gender' => $validated['gender'] ?? null,
                 'birth_date' => $validated['birth_date'] ?? null,
@@ -107,6 +113,8 @@ class PublicComplaintController extends Controller
             'event_type' => 'created',
             'status_after' => $complaint->status,
             'author' => 'Customer',
+            'department' => User::DEPT_GENERAL,
+            'pool_to_department' => User::DEPT_QA,
             'note' => 'Complaint dibuat melalui halaman publik.',
             'event_at' => now(),
         ]);
@@ -125,6 +133,8 @@ class PublicComplaintController extends Controller
                 message: 'Complaint baru masuk dari customer (form publik).',
             ));
         }
+
+        $this->complaintNotificationService->notifyConfiguredRecipientsForIncomingComplaint($complaint);
 
         return redirect()
             ->route('public.complaints.create')
